@@ -5,6 +5,7 @@ import './App.css';
 const MAX_VIDEOS = 4;
 const ACCEPTED_FORMATS = ['video/mp4','video/webm','video/ogg','video/quicktime'];
 const MAX_SIZE_MB = 1024; // 1GB cap
+const SEEK_STEP = 2; // seconds forward/backward
 
 function App() {
   const [videos, setVideos] = useState([]); // {id,url,name,file}
@@ -29,7 +30,13 @@ function App() {
     };
   }, []);
 
-  const resetArrays = n => { setPlaying(Array(n).fill(false)); setVolumes(Array(n).fill(1)); setMuted(Array(n).fill(false)); setSeekValues(Array(n).fill(0)); };
+  const resetArrays = n => { // not used for incremental add anymore, retained if future full reset needed
+    setPlaying(Array(n).fill(false));
+    setVolumes(Array(n).fill(1));
+    // only first video unmuted
+    setMuted(Array.from({length:n}, (_,i)=> i !==0));
+    setSeekValues(Array(n).fill(0));
+  };
   const setIdx = (setter, i, val) => setter(prev => { const c=[...prev]; c[i]=val; return c; });
   const validate = f => { if(!ACCEPTED_FORMATS.includes(f.type)) return `Unsupported: ${f.name}`; if(f.size/1024/1024 > MAX_SIZE_MB) return `Too large (> ${MAX_SIZE_MB}MB): ${f.name}`; return null; };
   const addFiles = list => {
@@ -42,8 +49,23 @@ function App() {
     slice.forEach(f => { const e = validate(f); if (e) errs.push(e); else adds.push({ id: crypto.randomUUID? crypto.randomUUID(): Math.random().toString(36).slice(2), url: URL.createObjectURL(f), name: f.name, file: f }); });
     if (errs.length) setError(errs.join('\n'));
     if (!adds.length) return;
+    const prevLen = videos.length;
     const upd = [...videos, ...adds];
-    setVideos(upd); resetArrays(upd.length);
+    setVideos(upd);
+    // Extend parallel state arrays without resetting existing state
+    setPlaying(p => [...p, ...Array(adds.length).fill(false)]);
+    setVolumes(vs => [...vs, ...Array(adds.length).fill(1)]);
+    setSeekValues(sv => [...sv, ...Array(adds.length).fill(0)]);
+    setMuted(m => {
+      // start from existing array or initialize
+      const base = m.length === prevLen ? [...m] : Array(prevLen).fill(true).map((_,i)=> i!==0); // safety if mismatch
+      // for each new index: mute unless overall index is 0
+      for (let i = 0; i < adds.length; i++) {
+        const overallIndex = prevLen + i;
+        base[overallIndex] = overallIndex !== 0; // only index 0 plays audio by default
+      }
+      return base;
+    });
   };
   const removeVideo = id => {
     setVideos(prev => {
@@ -74,6 +96,18 @@ function App() {
   const allPaused = playing.every(p => !p);
   const toggleAll = () => videos.forEach((_,i)=>{ const el=videoRefs.current[i]; if(!el) return; if(allPaused){ el.play(); setIdx(setPlaying,i,true);} else { el.pause(); setIdx(setPlaying,i,false);} });
   const seekAll = d => videos.forEach((_,i)=>seekBy(i,d));
+  const allMuted = muted.length>0 && muted.every(m=>m);
+  const toggleMuteAll = () => {
+    setMuted(prev => {
+      const target = allMuted ? prev.map(()=>false) : prev.map(()=>true);
+      // Keep only first unmuted when unmuting all? Requirement asks only for mute-all option; using toggle for convenience.
+      return target;
+    });
+  };
+  // Sync muted state to actual video elements whenever it changes
+  useEffect(()=> {
+    muted.forEach((m,i)=>{ const el=videoRefs.current[i]; if(el) el.muted = m; });
+  }, [muted]);
   const syncAll = () => { if(!videoRefs.current[0]) return; const t = videoRefs.current[0].currentTime; videos.forEach((_,i)=>{ if(i===0) return; const el=videoRefs.current[i]; if(el){ el.currentTime=t; setIdx(setSeekValues,i,t);} }); };
 
   // Auto-hide main controls after 5s of no interaction
@@ -124,8 +158,8 @@ function App() {
               </div>
               <div className="video-controls">
                 <button onClick={()=>togglePlay(i)}>{playing[i] ? 'Pause' : 'Play'}</button>
-                <button onClick={()=>seekBy(i,-10)}>&laquo; 10s</button>
-                <button onClick={()=>seekBy(i,10)}>10s &raquo;</button>
+                <button onClick={()=>seekBy(i,-SEEK_STEP)}>&laquo; {SEEK_STEP}s</button>
+                <button onClick={()=>seekBy(i,SEEK_STEP)}>{SEEK_STEP}s &raquo;</button>
                 <button onClick={()=>toggleMute(i)}>{muted[i] ? 'Unmute' : 'Mute'}</button>
                 <input type="range" min={0} max={1} step={0.01} value={volumes[i] ?? 1} onChange={e=>setVolume(i,Number(e.target.value))} />
                 <input type="range" min={0} max={videoRefs.current[i]?.duration || 0} step={0.1} value={seekValues[i] ?? 0} onChange={e=>scrubTo(i,Number(e.target.value))} />
@@ -140,9 +174,10 @@ function App() {
              onMouseEnter={()=>{ if(hideTimerRef.current) clearTimeout(hideTimerRef.current); setShowMainControls(true);} }
              onMouseLeave={()=>{ if(hideTimerRef.current) clearTimeout(hideTimerRef.current); hideTimerRef.current = setTimeout(()=> setShowMainControls(false), 3000); }}>
           <button onClick={toggleAll}>{allPaused?'Play All':'Pause All'}</button>
-          <button onClick={()=>seekAll(-10)}>&laquo; 10s</button>
-          <button onClick={()=>seekAll(10)}>10s &raquo;</button>
+          <button onClick={()=>seekAll(-SEEK_STEP)}>&laquo; {SEEK_STEP}s</button>
+          <button onClick={()=>seekAll(SEEK_STEP)}>{SEEK_STEP}s &raquo;</button>
           <button onClick={syncAll}>Sync All</button>
+          <button onClick={toggleMuteAll}>{allMuted ? 'Unmute All' : 'Mute All'}</button>
         </div>
       )}
     </div>
