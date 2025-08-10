@@ -146,6 +146,7 @@ function App() {
               src={v.url}
               className="video-player"
               preload="metadata"
+              loop
               onTimeUpdate={()=>handleTimeUpdate(i)}
               onPlay={()=>setIdx(setPlaying,i,true)}
               onPause={()=>setIdx(setPlaying,i,false)}
