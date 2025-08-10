@@ -8,6 +8,7 @@ const MAX_SIZE_MB = 1024; // 1GB cap
 
 function App() {
   const [videos, setVideos] = useState([]); // {id,url,name,file}
+  const videosRef = useRef([]); // track latest videos for unmount cleanup
   const [error, setError] = useState('');
   const videoRefs = useRef([]);
   const fileInputRef = useRef(null);
@@ -19,7 +20,14 @@ function App() {
   const [showMainControls, setShowMainControls] = useState(true);
   const hideTimerRef = useRef(null);
 
-  useEffect(() => () => { videos.forEach(v => URL.revokeObjectURL(v.url)); }, [videos]);
+  // Keep ref in sync with latest videos
+  useEffect(()=> { videosRef.current = videos; }, [videos]);
+  // Revoke object URLs only on unmount (NOT on every update to avoid invalidating active blobs)
+  useEffect(()=> {
+    return () => {
+      videosRef.current.forEach(v => { try { URL.revokeObjectURL(v.url); } catch(_){} });
+    };
+  }, []);
 
   const resetArrays = n => { setPlaying(Array(n).fill(false)); setVolumes(Array(n).fill(1)); setMuted(Array(n).fill(false)); setSeekValues(Array(n).fill(0)); };
   const setIdx = (setter, i, val) => setter(prev => { const c=[...prev]; c[i]=val; return c; });
@@ -41,7 +49,8 @@ function App() {
     setVideos(prev => {
       const idx = prev.findIndex(v => v.id === id);
       if (idx === -1) return prev;
-      URL.revokeObjectURL(prev[idx].url);
+      // Revoke only the removed video's object URL
+      try { URL.revokeObjectURL(prev[idx].url); } catch(_){}
       videoRefs.current.splice(idx, 1);
       setPlaying(p => p.filter((_, i) => i !== idx));
       setVolumes(p => p.filter((_, i) => i !== idx));
