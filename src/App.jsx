@@ -127,7 +127,7 @@ function App() {
         ))}
       </div>
       {videos.length>0 && (
-        <div className={`overall-controls bottom-overlay ${showMainControls ? 'visible' : ''}`}
+        <div className={`overall-controls side-overlay ${showMainControls ? 'visible' : ''}`}
              onMouseEnter={()=>{ if(hideTimerRef.current) clearTimeout(hideTimerRef.current); setShowMainControls(true);} }
              onMouseLeave={()=>{ if(hideTimerRef.current) clearTimeout(hideTimerRef.current); hideTimerRef.current = setTimeout(()=> setShowMainControls(false), 3000); }}>
           <button onClick={toggleAll}>{allPaused?'Play All':'Pause All'}</button>

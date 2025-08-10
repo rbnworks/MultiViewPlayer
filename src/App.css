@@ -34,10 +34,11 @@ h1 { margin:0 0 .75rem; font-size:1.35rem; font-weight:600; letter-spacing:.5px;
 .time-display { font-size:.55rem; color:#eee; min-width:70px; text-align:left; }
 
 /* Bottom overall controls (auto-hide) */
-.overall-controls.bottom-overlay { position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center; gap:.75rem; padding:.7rem 1rem 1.05rem; z-index:100; opacity:0; transform:translateY(25px); transition:opacity .45s, transform .45s; pointer-events:none; }
-.overall-controls.bottom-overlay.visible { opacity:1; transform:translateY(0); pointer-events:auto; }
-.overall-controls.bottom-overlay button { background:#2563eb; color:#fff; border:none; border-radius:6px; padding:.6rem 1rem; font-size:.75rem; cursor:pointer; box-shadow:0 2px 8px #0008; }
-.overall-controls.bottom-overlay button:hover { background:#1d4ed8; }
+/* Side overlay (left, vertically centered) */
+.overall-controls.side-overlay { position:fixed; top:50%; left:0; transform:translate(-120%, -50%); display:flex; flex-direction:column; gap:.6rem; padding:.9rem .9rem 1rem; background:rgba(17,17,17,.78); backdrop-filter:blur(4px); border-top-right-radius:10px; border-bottom-right-radius:10px; box-shadow:0 4px 14px #000a; opacity:0; transition:opacity .45s, transform .45s; pointer-events:none; z-index:120; }
+.overall-controls.side-overlay.visible { opacity:1; transform:translate(0, -50%); pointer-events:auto; }
+.overall-controls.side-overlay button { background:#2563eb; color:#fff; border:none; border-radius:6px; padding:.55rem .85rem; font-size:.72rem; cursor:pointer; box-shadow:0 2px 6px #0009; text-align:left; }
+.overall-controls.side-overlay button:hover { background:#1d4ed8; }
 
 @media (max-width:900px){
   .video-grid { align-items:stretch; }
